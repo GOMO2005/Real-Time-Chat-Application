@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .chat-box {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+        }
+        .message-box {
+            max-height: 200px;
+            resize: none;
+        }
+        .file-upload-wrapper {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+        }
+        .file-name {
+            margin-left: 10px;
+            font-size: 14px;
+            color: #555;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">Online Users</h5>
+                        <ul id="users-list" class="list-group">
+                            {% for user in users_online %}
+                                <li class="list-group-item">{{ user }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">Chat</h5>
+                        <div id="messages" class="chat-box"></div>
+                        <div class="form-group">
+                            <textarea id="message" class="form-control message-box" rows="3" placeholder="Type a message"></textarea>
+                        </div>
+                        <button onclick="sendMessage()" class="btn btn-primary btn-block">Send Message</button>
+                        <div class="file-upload-wrapper">
+                            <input type="file" id="file-input" class="form-control-file">
+                            <button onclick="sendFile()" class="btn btn-success ml-2">Send File</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="text-center mt-3">
+            <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.1/socket.io.min.js"></script>
+    <script>
+        const socket = io.connect('http://' + document.domain + ':' + location.port);
+
+        // Update UI on new messages
+        socket.on('message', function(data) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('alert', 'alert-secondary');
+            messageDiv.textContent = `${data.username}: ${data.msg}`;
+            document.getElementById('messages').appendChild(messageDiv);
+        });
+
+        // Display uploaded file
+        socket.on('file_message', function(data) {
+            const fileDiv = document.createElement('div');
+            fileDiv.classList.add('alert', 'alert-info');
+            fileDiv.innerHTML = `${data.username} sent a file: <a href="uploads/${data.file_data}" target="_blank">Download File</a>`;
+            document.getElementById('messages').appendChild(fileDiv);
+        });
+
+        // Notify users when someone connects or disconnects
+        socket.on('user_connected', function(data) {
+            const userList = document.getElementById('users-list');
+            const newUserItem = document.createElement('li');
+            newUserItem.classList.add('list-group-item');
+            newUserItem.textContent = data.username;
+            userList.appendChild(newUserItem);
+        });
+
+        socket.on('user_disconnected', function(data) {
+            const userList = document.getElementById('users-list');
+            const userItems = userList.getElementsByTagName('li');
+            for (let i = 0; i < userItems.length; i++) {
+                if (userItems[i].textContent === data.username) {
+                    userList.removeChild(userItems[i]);
+                    break;
+                }
+            }
+        });
+
+        // Send regular message
+        function sendMessage() {
+            const message = document.getElementById('message').value;
+            if (message) {
+                socket.send(message);  // Send via WebSocket
+                document.getElementById('message').value = '';  // Clear input
+            }
+        }
+
+        // Send file
+        function sendFile() {
+            const fileInput = document.getElementById('file-input');
+            const file = fileInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const fileData = event.target.result;  // File data to send
+                    socket.emit('file_message', {file_data: fileData});  // Emit the file data
+                };
+                reader.readAsDataURL(file);  // Read file as data URL (base64)
+            }
+        }
+    </script>
+</body>
+</html>
