@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # ChatSpace — Real-Time Messaging App
 
 Lightweight real-time chat app built with Python. This folder contains the server entrypoint and simple template pages for auth and dashboard.
