@@ -1,4 +1,14 @@
+<<<<<<< HEAD
 Flask==3.1.3
 flask_socketio==5.6.1
 flask_sqlalchemy==3.1.1
 Werkzeug==3.1.8
+=======
+﻿Flask==3.0.0
+Flask-SocketIO==5.3.6
+Flask-SQLAlchemy==3.1.1
+psycopg2-binary==2.9.9
+Werkzeug==3.0.1
+gunicorn==21.2.0
+eventlet==0.35.1
+>>>>>>> 2e0cd3e (Add Redis-backed SocketIO queue for multi-replica scaling)
