@@ -1,36 +1,15 @@
-ChatSpace - Real-Time Messaging App
+ChatSpace — Real-Time Messaging App
 
-ChatSpace is a lightweight real-time messaging application built with Python, Flask, and Socket.IO. The application is fully containerized with Docker and can be deployed to Kubernetes for production or cluster-based environments.
+ChatSpace is a lightweight real-time messaging application built with Python, Flask, and Socket.IO. The application is fully containerized with Docker and can be deployed to Kubernetes.
 
 Features
 Real-time messaging with Socket.IO
 User registration and login
 File upload support
-PostgreSQL database backend
-Production server using Gunicorn and Eventlet
+Database-backed application
+Production-ready Gunicorn + Eventlet configuration
 Docker Compose support for local development
 Kubernetes manifests for cluster deployment
-Project Structure
-.
-├── app.py                         # Application entrypoint, routes, and Socket.IO events
-├── templates/                     # HTML templates
-│   ├── login.html
-│   ├── register.html
-│   └── dashboard.html
-├── uploads/                       # User-uploaded files (ignored by Git)
-├── instance/                      # Application instance data (ignored by Git)
-├── k8k/                           # Kubernetes manifests
-│   ├── deployment.yml
-│   ├── service.yml
-│   ├── postgres.yml
-│   ├── postgres-service.yml
-│   └── secret.yml
-├── Dockerfile
-├── docker-compose.yml
-├── requirements.txt
-├── .env                           # Local environment variables (ignored by Git)
-└── README.md
-
 Requirements
 
 For local development:
@@ -46,8 +25,8 @@ Docker Compose
 
 For Kubernetes deployment:
 
-A Kubernetes cluster
-kubectl configured for the target cluster
+A running Kubernetes cluster
+kubectl configured to access the cluster
 Quick Start with Docker Compose
 
 Docker Compose is the recommended way to run ChatSpace locally.
@@ -61,14 +40,8 @@ POSTGRES_USER=chatuser
 POSTGRES_PASSWORD=your-password
 POSTGRES_DB=chatapp
 
-
-Use a strong, unique value for SECRET_KEY and a secure PostgreSQL password.
-
 2. Build and start the application
 docker compose up --build
-
-
-Docker Compose will build the application image and start the required services.
 
 3. Open the application
 
@@ -83,31 +56,19 @@ docker compose down
 
 Local Development Without Docker
 1. Create a virtual environment
-
-On Windows PowerShell:
-
 python -m venv venv
+
+2. Activate the virtual environment
 .\venv\Scripts\Activate.ps1
 
-
-On Linux/macOS:
-
-python3 -m venv venv
-source venv/bin/activate
-
-2. Install dependencies
+3. Install dependencies
 pip install -r requirements.txt
 
-3. Configure environment variables
+4. Configure environment variables
 
-Create a .env file in the project root with the required application and PostgreSQL settings:
+Create a .env file in the project root using the variables described in the Docker Compose section.
 
-SECRET_KEY=your-secret-key
-POSTGRES_USER=chatuser
-POSTGRES_PASSWORD=your-password
-POSTGRES_DB=chatapp
-
-4. Start the application
+5. Start the application
 python app.py
 
 
@@ -117,22 +78,22 @@ http://localhost:5000
 
 Kubernetes Deployment
 
-The k8k/ directory contains the Kubernetes resources required to deploy ChatSpace and its PostgreSQL database.
+The Kubernetes configuration can be deployed using the manifests in the k8k/ directory.
 
-1. Configure Secrets
+1. Configure secrets
 
 Do not commit real credentials to Git.
 
-The preferred approach is to create the Kubernetes Secret directly:
+The recommended approach is to create the Kubernetes secret directly:
 
-kubectl create secret generic chat-secrets \
-  --from-literal=SECRET_KEY=your-secret-key \
-  --from-literal=POSTGRES_USER=chatuser \
-  --from-literal=POSTGRES_PASSWORD=your-password \
+kubectl create secret generic chat-secrets `
+  --from-literal=SECRET_KEY=your-secret-key `
+  --from-literal=POSTGRES_USER=chatuser `
+  --from-literal=POSTGRES_PASSWORD=your-password `
   --from-literal=POSTGRES_DB=chatapp
 
 
-If k8k/secret.yml is included in the repository, keep it limited to placeholders or non-sensitive example values.
+If k8k/secret.yml is committed to the repository, make sure it contains placeholders only and never real production credentials.
 
 2. Deploy PostgreSQL
 kubectl apply -f k8k/postgres.yml
@@ -143,62 +104,43 @@ kubectl apply -f k8k/deployment.yml
 kubectl apply -f k8k/service.yml
 
 4. Check the deployment
-
-View the deployed resources:
-
 kubectl get pods
 kubectl get services
 kubectl get deployments
 
+Configuration
 
-To inspect application logs:
+ChatSpace uses environment variables for application and database configuration.
 
-kubectl logs -l app=chatspace
+Variable	Description
+SECRET_KEY	Secret key used by the Flask application
+POSTGRES_USER	PostgreSQL username
+POSTGRES_PASSWORD	PostgreSQL password
+POSTGRES_DB	PostgreSQL database name
 
+Keep .env files and production credentials out of source control.
 
-The exact label selector may vary depending on the labels defined in k8k/deployment.yml.
+Production
 
-Updating the Application
+The application is configured to support a production deployment using Gunicorn with Eventlet.
 
-After making application changes, rebuild the Docker image and restart the Compose environment:
+For production deployments, it is recommended to:
 
-docker compose up --build
-
-
-For Kubernetes, build and publish the updated image to the registry configured by the deployment manifest, then restart or update the deployment as required.
-
-For example:
-
-kubectl rollout restart deployment/chatspace
-
-
-Check the rollout status with:
-
-kubectl rollout status deployment/chatspace
-
+Run the application behind HTTPS.
+Use an ingress controller or reverse proxy for TLS termination.
+Store secrets using Kubernetes Secrets or another secure secret-management system.
+Use persistent storage for PostgreSQL data.
+Configure persistent storage for uploaded files if uploads need to survive pod recreation.
+Avoid committing credentials or other sensitive configuration to Git.
 Security Notes
 Never commit .env files containing real credentials.
 Never commit real database passwords or application secrets.
-Keep uploads/ out of Git unless uploaded files are intentionally part of the project.
-Keep instance/ out of Git when it contains local or runtime data.
-Use Kubernetes Secrets for sensitive configuration.
-Use strong, unique values for SECRET_KEY and database credentials.
-For production deployments, place the application behind HTTPS using an ingress controller or reverse proxy with TLS.
-Review file-upload handling carefully before exposing the application publicly.
-Redis / Socket.IO Scaling
-
-If the application uses Redis as a Socket.IO message queue, Redis should be documented and deployed as an additional service.
-
-This is particularly important when running multiple ChatSpace application replicas: Socket.IO events need a shared message queue so that clients connected to different application instances can receive real-time events correctly.
-
-If Redis is not present in the current Dockerfile, docker-compose.yml, or Kubernetes manifests, it should not be documented as a required component.
-
+Keep user-uploaded content out of Git.
+k8k/secret.yml should contain placeholders only if it is committed to the repository.
+Use HTTPS in production.
+Use persistent volumes for stateful data in Kubernetes.
 License
 
 This project is intended for private use.
 
-If you plan to distribute the application, add an appropriate open-source or proprietary license.
-
-:::
-
-One important correction: I would **not claim Redis is used** unless it actually appears in the application/configuration. The old “Redis-backed SocketIO queue” text sounds like leftover documentation, so the README above treats Redis as conditional rather than falsely documenting it as part of the current deployment.
+If you plan to distribute or open-source the project, add an appropriate license before doing so.
