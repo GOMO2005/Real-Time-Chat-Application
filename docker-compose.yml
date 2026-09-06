@@ -9,7 +9,7 @@
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U POSTGRESUSER−d{POSTGRES_USER} -dPOSTGRESU​SER−d{POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U POSTGRESUSER−dPOSTGRES_USER -dPOSTGRESU​SER−dPOSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 10
