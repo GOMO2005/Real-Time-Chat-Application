@@ -1,146 +1,241 @@
-ChatSpace — Real-Time Messaging App
+﻿# ChatSpace — Real-Time Messaging App
 
-ChatSpace is a lightweight real-time messaging application built with Python, Flask, and Socket.IO. The application is fully containerized with Docker and can be deployed to Kubernetes.
+ChatSpace is a real-time messaging application built with **Python, Flask, and Socket.IO**, backed by **PostgreSQL** and scaled with a **Redis** message queue. It is fully containerized with Docker and deploys to Kubernetes.
 
-Features
-Real-time messaging with Socket.IO
-User registration and login
-File upload support
-Database-backed application
-Production-ready Gunicorn + Eventlet configuration
-Docker Compose support for local development
-Kubernetes manifests for cluster deployment
-Requirements
+## Features
 
-For local development:
+- Real-time messaging with Socket.IO (Redis-backed message queue for multi-replica scaling)
+- User registration and login (hashed passwords)
+- Public room messages, direct messages, and @mentions with notifications
+- Message reactions (toggleable emoji), edit, and delete
+- Typing indicators and user online status
+- User profiles with avatar upload (png/jpg/jpeg/pdf/txt, 5MB limit)
+- File sharing in chat (base64 upload, stored server-side)
+- Production-ready Gunicorn + Eventlet configuration
+- Docker Compose support for local development
+- Kubernetes manifests for cluster deployment (app, PostgreSQL, Redis)
 
-Python 3.11+
-pip
-A virtual environment
+## Architecture
 
-For containerized development:
+| Component  | Technology                     | Purpose                                      |
+|------------|--------------------------------|----------------------------------------------|
+| Web app    | Flask 3 + Flask-SocketIO       | HTTP routes + WebSocket events (eventlet)    |
+| Database   | PostgreSQL 16 (SQLAlchemy)     | Users, messages, reactions                   |
+| Queue      | Redis 7                        | Socket.IO message queue (multi-replica safe) |
+| Server     | Gunicorn (eventlet worker)     | WSGI/ASGI production serving                 |
 
-Docker
-Docker Compose
+## Requirements
 
-For Kubernetes deployment:
+**Local development:**
+- Python 3.11+, pip, virtualenv
 
-A running Kubernetes cluster
-kubectl configured to access the cluster
-Quick Start with Docker Compose
+**Containerized:**
+- Docker, Docker Compose
 
-Docker Compose is the recommended way to run ChatSpace locally.
+**Kubernetes:**
+- A running cluster (tested with kind)
+- kubectl configured against the cluster
 
-1. Create the environment file
+## Quick Start with Docker Compose
 
-Create a .env file in the project root:
+1. **Create a `.env` file** in the project root:
 
-SECRET_KEY=your-secret-key
-POSTGRES_USER=chatuser
-POSTGRES_PASSWORD=your-password
-POSTGRES_DB=chatapp
+   SECRET_KEY=your-secret-key
+   POSTGRES_USER=chatuser
+   POSTGRES_PASSWORD=your-password
+   POSTGRES_DB=chatapp
+text
+ 
+  
+ 
+ 
 
-2. Build and start the application
-docker compose up --build
+2. **Build and start:**
 
-3. Open the application
+ 
+ 
 
-Once the containers are running, open:
+   docker compose up --build
+text
+ 
+  
+ 
+ 
 
-http://localhost:5000
+This starts three containers: `chat-app`, `chat-db` (PostgreSQL), and `chat-redis` (Redis queue).
 
+3. **Open** http://localhost:5000
 
-To stop the application:
+To stop:
+
+ 
+ 
 
 docker compose down
+text
+ 
+  
+ 
+ 
 
-Local Development Without Docker
-1. Create a virtual environment
+## Local Development Without Docker
+
+ 
+ 
+
 python -m venv venv
-
-2. Activate the virtual environment
 .\venv\Scripts\Activate.ps1
-
-3. Install dependencies
 pip install -r requirements.txt
-
-4. Configure environment variables
-
-Create a .env file in the project root using the variables described in the Docker Compose section.
-
-5. Start the application
 python app.py
+text
+ 
+  
+ 
+ 
 
+Create the same `.env` file as above. Requires a local PostgreSQL (and Redis for the SocketIO queue) or running them via `docker compose up db redis`.
 
-The application should then be available at:
+The app listens on http://localhost:5000.
 
-http://localhost:5000
+## Kubernetes Deployment
 
-Kubernetes Deployment
+Manifests live in `k8k/`:
 
-The Kubernetes configuration can be deployed using the manifests in the k8k/ directory.
+| File                    | Resource                                  |
+|-------------------------|-------------------------------------------|
+| `postgres.yml`          | PostgreSQL StatefulSet                    |
+| `postgres-service.yml`  | PostgreSQL headless Service               |
+| `redis.yml`             | Redis Deployment + Service (message queue)|
+| `deployment.yml`        | Chat app Deployment (init containers wait for Postgres and Redis) |
+| `service.yml`           | NodePort Service (80 -> 30080)            |
+| `secret.yml`            | App secrets (placeholders only!)          |
 
-1. Configure secrets
+### 1. Configure secrets (recommended)
 
-Do not commit real credentials to Git.
+ 
+ 
 
-The recommended approach is to create the Kubernetes secret directly:
-
-kubectl create secret generic chat-secrets `
-  --from-literal=SECRET_KEY=your-secret-key `
-  --from-literal=POSTGRES_USER=chatuser `
-  --from-literal=POSTGRES_PASSWORD=your-password `
+kubectl create secret generic chat-secrets --from-literal=SECRET_KEY=your-secret-key
+  --from-literal=POSTGRES_USER=chatuser --from-literal=POSTGRES_PASSWORD=your-password
   --from-literal=POSTGRES_DB=chatapp
+text
+ 
+  
+ 
+ 
 
+If you use `k8k/secret.yml`, it must contain placeholders only — never real credentials.
 
-If k8k/secret.yml is committed to the repository, make sure it contains placeholders only and never real production credentials.
+### 2. Deploy the stack
 
-2. Deploy PostgreSQL
+ 
+ 
+
 kubectl apply -f k8k/postgres.yml
 kubectl apply -f k8k/postgres-service.yml
-
-3. Deploy the application
+kubectl apply -f k8k/redis.yml
 kubectl apply -f k8k/deployment.yml
 kubectl apply -f k8k/service.yml
+text
+ 
+  
+ 
+ 
 
-4. Check the deployment
+### 3. Load the app image into a kind cluster
+
+The deployment uses `imagePullPolicy: IfNotPresent` with a locally built image, so the image must exist inside the cluster node.
+
+With the kind CLI:
+
+ 
+ 
+
+kind load docker-image chatspacereal-timemessagingapp-app:latest --name <cluster-name>
+text
+ 
+  
+ 
+ 
+
+Without the kind CLI (manual, node name `desktop-control-plane`):
+
+ 
+ 
+
+docker save -o chat-app.tar chatspacereal-timemessagingapp-app:latest
+docker cp chat-app.tar desktop-control-plane:/chat-app.tar
+docker exec desktop-control-plane ctr --namespace=k8s.io images import /chat-app.tar
+text
+ 
+  
+ 
+ 
+
+### 4. Verify
+
+ 
+ 
+
 kubectl get pods
-kubectl get services
-kubectl get deployments
+kubectl get svc
+kubectl rollout status deployment/chat
+text
+ 
+  
+ 
+ 
 
-Configuration
+All three pods (`chat`, `postgres-0`, `redis`) should reach `Running` and `1/1 Ready`.
 
-ChatSpace uses environment variables for application and database configuration.
+### 5. Access the app
 
-Variable	Description
-SECRET_KEY	Secret key used by the Flask application
-POSTGRES_USER	PostgreSQL username
-POSTGRES_PASSWORD	PostgreSQL password
-POSTGRES_DB	PostgreSQL database name
+kind does not expose NodePorts to the host by default. Use port-forwarding:
 
-Keep .env files and production credentials out of source control.
+ 
+ 
 
-Production
+kubectl port-forward svc/chat-app 5000:80
+text
+ 
+  
+ 
+ 
 
-The application is configured to support a production deployment using Gunicorn with Eventlet.
+Then open http://localhost:5000 (keep the terminal open while testing).
 
-For production deployments, it is recommended to:
+## Configuration
 
-Run the application behind HTTPS.
-Use an ingress controller or reverse proxy for TLS termination.
-Store secrets using Kubernetes Secrets or another secure secret-management system.
-Use persistent storage for PostgreSQL data.
-Configure persistent storage for uploaded files if uploads need to survive pod recreation.
-Avoid committing credentials or other sensitive configuration to Git.
-Security Notes
-Never commit .env files containing real credentials.
-Never commit real database passwords or application secrets.
-Keep user-uploaded content out of Git.
-k8k/secret.yml should contain placeholders only if it is committed to the repository.
-Use HTTPS in production.
-Use persistent volumes for stateful data in Kubernetes.
-License
+All configuration is via environment variables:
 
-This project is intended for private use.
+| Variable           | Description                                  | Default                |
+|--------------------|----------------------------------------------|------------------------|
+| `SECRET_KEY`       | Flask secret key                             | `dev_secret_key`       |
+| `POSTGRES_USER`    | PostgreSQL username                          | `postgres`             |
+| `POSTGRES_PASSWORD`| PostgreSQL password                          | `postgres`             |
+| `POSTGRES_HOST`    | PostgreSQL host                              | `localhost`            |
+| `POSTGRES_PORT`    | PostgreSQL port                              | `5432`                 |
+| `POSTGRES_DB`      | PostgreSQL database name                     | `chatapp`              |
+| `REDIS_URL`        | Redis URL for the SocketIO message queue     | `redis://localhost:6379/0` |
 
-If you plan to distribute or open-source the project, add an appropriate license before doing so.
+Keep `.env` files and production credentials out of source control.
+
+## Production Checklist
+
+- Run behind HTTPS with an ingress controller or reverse proxy for TLS termination.
+- Use Kubernetes Secrets (or a dedicated secret manager) for credentials.
+- Use persistent volumes for PostgreSQL data.
+- Mount a persistent volume for `uploads/` if uploaded files must survive pod recreation.
+- Scale the app with `replicas > 1` — the Redis message queue keeps Socket.IO events consistent across pods.
+- Sticky sessions at the ingress/proxy layer are recommended for Socket.IO with multiple replicas.
+
+## Security Notes
+
+- Never commit `.env` files or real database credentials.
+- `k8k/secret.yml` must contain placeholders only.
+- User uploads are stored outside Git (`uploads/` is ignored).
+- Uploads are restricted by extension and 5MB size limit.
+
+## License
+
+Private project. Add an appropriate license before distributing or open-sourcing.
