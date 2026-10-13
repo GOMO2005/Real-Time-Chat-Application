@@ -1,4 +1,4 @@
-﻿apiVersion: apps/v1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: chat
@@ -21,7 +21,7 @@ spec:
           command: ["sh", "-c", "until redis-cli -h redis ping; do echo waiting for redis; sleep 2; done"]
       containers:
         - name: chat-app
-          image: chatspacereal-timemessagingapp-app:latest
+          image: chat-app:k8s
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5000
