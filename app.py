@@ -1,4 +1,4 @@
-﻿import os
+import os
 import uuid
 import base64
 from flask import Flask, render_template, redirect, url_for, request, session, flash, send_from_directory, jsonify
@@ -26,7 +26,7 @@ POSTGRES_PORT = os.environ.get("POSTGRES_PORT", "5432")
 POSTGRES_DB = os.environ.get("POSTGRES_DB", "chatapp")
 
 app.config["SQLALCHEMY_DATABASE_URI"] = (
-    f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}"
+    f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}"
     f"@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
 )
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
