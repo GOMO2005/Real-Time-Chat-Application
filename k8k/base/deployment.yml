@@ -12,19 +12,35 @@ spec:
       labels:
         app: chat-app
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:
         - name: wait-for-postgres
           image: postgres:16-alpine
-          command: ["sh", "-c", "until pg_isready -h postgres -U chatuser -d chatapp; do echo waiting for db; sleep 2; done"]
+          command:
+            - sh
+            - -c
+            - until pg_isready -h postgres -U "$POSTGRES_USER" -d "$POSTGRES_DB"; do echo waiting for db; sleep 2; done
+          envFrom:
+            - secretRef:
+                name: chat-secrets
         - name: wait-for-redis
           image: redis:7-alpine
-          command: ["sh", "-c", "until redis-cli -h redis ping; do echo waiting for redis; sleep 2; done"]
+          command:
+            - sh
+            - -c
+            - until redis-cli -h redis ping; do sleep 2; done
       containers:
         - name: chat-app
           image: chat-app:k8s
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Never
           ports:
-            - containerPort: 5000
+            - name: http
+              containerPort: 5000
           envFrom:
             - secretRef:
                 name: chat-secrets
@@ -42,15 +58,24 @@ spec:
             limits:
               cpu: 500m
               memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          startupProbe:
+            httpGet:
+              path: /login
+              port: http
+            periodSeconds: 5
+            failureThreshold: 30
           readinessProbe:
             httpGet:
               path: /login
-              port: 5000
-            initialDelaySeconds: 10
+              port: http
             periodSeconds: 10
           livenessProbe:
             httpGet:
               path: /login
-              port: 5000
-            initialDelaySeconds: 20
+              port: http
             periodSeconds: 20
