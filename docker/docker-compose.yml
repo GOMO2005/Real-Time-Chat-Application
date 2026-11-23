@@ -21,7 +21,9 @@ services:
     restart: unless-stopped
 
   app:
-    build:\r\n      context: ..\r\n      dockerfile: docker/Dockerfile
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
     container_name: chat-app
     ports:
       - "5000:5000"
