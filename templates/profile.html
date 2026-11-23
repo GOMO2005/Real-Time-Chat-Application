@@ -1,0 +1,13 @@
+﻿<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Profile</title></head>
+<body>
+<h1>Profile</h1>
+<form method="post" enctype="multipart/form-data">
+<label>Bio <textarea name="bio" maxlength="500">{{ user.bio or "" }}</textarea></label>
+<label>Email <input type="email" name="email" value="{{ user.email or "" }}"></label>
+<label>Avatar <input type="file" name="avatar" accept=".png,.jpg,.jpeg"></label>
+<button type="submit">Save profile</button>
+</form>
+<a href="{{ url_for("dashboard") }}">Back to chat</a>
+</body></html>

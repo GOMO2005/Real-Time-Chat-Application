@@ -151,7 +151,7 @@ def profile():
         user.email = request.form.get("email")
         file = request.files.get("avatar")
         if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
+            filename = f'{uuid.uuid4().hex}_{secure_filename(file.filename)}'
             filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
             file.save(filepath)
             user.avatar = filename
@@ -163,11 +163,17 @@ def profile():
 
 @app.route("/uploads/<filename>")
 def uploaded_file(filename):
+    if "username" not in session:
+        return redirect(url_for("login"))
     return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
 
 @app.route("/edit_message", methods=["POST"])
 def edit_message():
-    msg_id = request.form["msg_id"]
+    if "username" not in session:
+        return jsonify({"success": False}), 401
+    msg_id = request.form.get("msg_id")
+    if not msg_id:
+        return jsonify({"success": False}), 400
     content = request.form["content"]
     msg = Message.query.get(msg_id)
     if msg and msg.sender.username == session["username"]:
@@ -178,7 +184,11 @@ def edit_message():
 
 @app.route("/delete_message", methods=["POST"])
 def delete_message():
-    msg_id = request.form["msg_id"]
+    if "username" not in session:
+        return jsonify({"success": False}), 401
+    msg_id = request.form.get("msg_id")
+    if not msg_id:
+        return jsonify({"success": False}), 400
     msg = Message.query.get(msg_id)
     if msg and msg.sender.username == session["username"]:
         db.session.delete(msg)
